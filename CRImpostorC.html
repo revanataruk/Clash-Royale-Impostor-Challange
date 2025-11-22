@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Clash Royale Impostor Challenge by RepanOhara</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#f59e0b; --muted:#94a3b8; --glass: rgba(255,255,255,0.04);
+    --ok:#10b981;
+  }
+  *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071029 0%, #071522 100%);color:#e6eef8}
+  .container{max-width:720px;margin:18px auto;padding:18px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  header .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#fde68a,#fb923c);display:flex;align-items:center;justify-content:center;color:#081126;font-weight:700;font-size:18px}
+  header h1{font-size:18px;margin:0}
+  .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 20px rgba(2,6,23,0.6);margin-bottom:12px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+  input[type=number]{width:100%;padding:10px;border-radius:8px;border:none;background:var(--glass);color:inherit;font-size:16px}
+  .row{display:flex;gap:8px;margin-top:10px}
+  button{flex:1;padding:12px;border-radius:10px;border:none;font-weight:600;font-size:16px;cursor:pointer}
+  .btn-primary{background:linear-gradient(90deg,var(--accent),#f97316);color:#071126}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+  .meta{font-size:13px;color:var(--muted);margin-top:10px}
+  .chip{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:13px}
+  .big{font-size:20px;font-weight:700}
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
+  /* Reveal modal */
+  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.8))}
+  .modal-card{width:100%;max-width:420px;background:linear-gradient(180deg,#071125,#06121a);border-radius:14px;padding:20px;text-align:center;box-shadow:0 10px 40px rgba(2,6,23,0.7)}
+  .role{font-size:22px;font-weight:800;margin:8px 0}
+  .troop{font-size:18px;color:var(--muted);margin-bottom:10px}
+  .modal-ok{margin-top:12px;padding:12px;border-radius:10px;border:none;font-weight:700;width:100%}
+  .hidden{display:none}
+  .small{font-size:13px;color:var(--muted)}
+  @media(min-width:640px){.container{margin:28px auto}}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">CRI</div>
+    <div>
+      <h1>Clash Royale Impostor Challenge</h1>
+      <div class="small">by RepanOhara</div>
+    </div>
+  </header>
+
+  <div class="card" id="setupCard">
+    <label for="playerCount">Number of players (min 3)</label>
+    <input id="playerCount" type="number" min="3" max="12" value="3" />
+    <div class="row" style="margin-top:12px;">
+      <button id="generateBtn" class="btn-primary">Generate Game</button>
+      <button id="resetBtn" class="btn-ghost">Reset</button>
+    </div>
+    <div class="meta" style="margin-top:12px">
+      Troop list synced to Fandom "Category: Troop Cards". Roles & turn order are chosen independently and randomly. Crew troop will <strong>not</strong> be shown publicly — only inside each crew player's reveal popup.
+    </div>
+  </div>
+
+  <div class="card hidden" id="gameCard">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">Players</div>
+        <div id="playersLine" class="big"></div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Start player</div>
+        <div id="startPlayer" class="chip big"></div>
+      </div>
+    </div>
+
+    <!-- NOTE: crew troop removed from public UI for privacy.
+         Troop is still selected internally and shown only in individual reveal popups. -->
+
+    <div style="margin-top:16px">
+      <button id="revealBtn" class="btn-primary">Reveal Player 1</button>
+    </div>
+
+    <div class="meta" style="margin-top:12px">
+      Reveal workflow: Hand the phone to the player whose name/number is shown on the button. After they read their role, press OK and pass to the next player.
+    </div>
+
+    <div id="endActions" class="hidden" style="margin-top:12px">
+      <div class="small">All roles revealed.</div>
+      <div class="row" style="margin-top:8px;">
+        <button id="showOrder" class="btn-ghost">Show Turn Order</button>
+        <button id="restart" class="btn-primary">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div id="modalTitle" class="small">Player 1 — Reveal</div>
+      <div id="modalRole" class="role">IMPOSTOR</div>
+      <div id="modalTroop" class="troop">Troop: —</div>
+      <div id="modalHint" class="small">(Crew: see troop name above — Impostor: you do not know the troop)</div>
+      <button id="modalOk" class="modal-ok" style="background:var(--ok);color:#021014">OK</button>
+    </div>
+  </div>
+
+  <div id="orderCard" class="card hidden">
+    <div class="small">Final turn order (who speaks when)</div>
+    <div id="orderList" style="margin-top:10px"></div>
+    <div style="margin-top:12px" class="small">Remember: order is independent from role.</div>
+  </div>
+
+  <footer>
+    <div class="small">Built for mobile pass-and-reveal. No accounts, no backend — everything runs locally in your browser.</div>
+  </footer>
+</div>
+
+<script>
+/* ===== TROOP LIST (troops only) =====
+   Matched to Fandom Category: Troop Cards. Edit this array to add/remove troops.
+*/
+const TROOPS = [
+  "Archers","Knight","Spear Goblins","Minions","Minion Horde","Goblins","Goblin Gang",
+  "Bomber","Skeletons","Barbarians","Valkyrie","Giant","Giant Skeleton","Mini P.E.K.K.A","Prince",
+  "Dark Prince","Musketeer","Mega Minion","Baby Dragon","Inferno Dragon","Balloon","Wizard","Witch",
+  "Hog Rider","Royal Hogs","Royal Giant","P.E.K.K.A","Bowler","Lumberjack","Bandit","Hunter",
+  "Zappies","Flying Machine","Cannon Cart","Battle Ram","Goblin Giant","Executioner","Ice Golem",
+  "Bats","Fire Spirits","Firecracker","Fisherman","Rascals","Wall Breakers","Elixir Golem","Battle Healer",
+  "Miner","Sparky","Princess","Magic Archer","Electro Wizard","Night Witch","Skeleton Dragons","Phoenix",
+  "Monk","Little Prince","Rune Giant","Berserker","Boss Bandit","Spirit Empress","Goblin Demolisher",
+  "Goblin Machine","Suspicious Bush","Goblinstein","Royal Chef","Dart Goblin","Archers Trio","Santa Hog Rider",
+  "Archer Queen","Golden Knight","Skeleton King","Mighty Miner"
+];
+
+/* ===== App state ===== */
+let state = {
+  playerCount: 3,
+  players: [],
+  impostorIndex: null,
+  crewTroop: null,    // kept private; only shown in crew popup
+  order: [],
+  revealIndex: 0
+};
+
+/* ===== Helpers ===== */
+function randInt(n){ return Math.floor(Math.random()*n); }
+function sample(arr){ return arr[randInt(arr.length)]; }
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ===== DOM refs ===== */
+const playerCountInput = document.getElementById('playerCount');
+const generateBtn = document.getElementById('generateBtn');
+const resetBtn = document.getElementById('resetBtn');
+const setupCard = document.getElementById('setupCard');
+const gameCard = document.getElementById('gameCard');
+const playersLine = document.getElementById('playersLine');
+const startPlayerChip = document.getElementById('startPlayer');
+const revealBtn = document.getElementById('revealBtn');
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalRole = document.getElementById('modalRole');
+const modalTroop = document.getElementById('modalTroop');
+const modalHint = document.getElementById('modalHint');
+const modalOk = document.getElementById('modalOk');
+const endActions = document.getElementById('endActions');
+const orderCard = document.getElementById('orderCard');
+const orderList = document.getElementById('orderList');
+const showOrder = document.getElementById('showOrder');
+const restartBtn = document.getElementById('restart');
+
+/* ===== Flow logic ===== */
+generateBtn.addEventListener('click', ()=> {
+  const n = parseInt(playerCountInput.value,10);
+  if(isNaN(n) || n < 3){ alert("Please enter a number >= 3"); return; }
+  if(n > 12){ if(!confirm("Players >12 may be cramped on mobile. Continue?")) return; }
+  startGame(n);
+});
+
+resetBtn.addEventListener('click', ()=> {
+  playerCountInput.value = 3;
+  resetState();
+});
+
+function startGame(n){
+  resetState();
+  state.playerCount = n;
+  state.players = [];
+  for(let i=1;i<=n;i++) state.players.push("Player " + i);
+
+  // Choose impostor index uniformly at random
+  state.impostorIndex = randInt(n);
+
+  // Choose crew troop randomly (kept PRIVATE; not shown publicly)
+  state.crewTroop = sample(TROOPS);
+
+  // Choose independent random speaking order
+  const indices = Array.from({length:n}, (_,i)=>i);
+  state.order = shuffle(indices.slice());
+
+  // Reveal index starts at 0 (we reveal players in numeric order)
+  state.revealIndex = 0;
+
+  // Update UI (note: crew troop intentionally NOT shown on main screen)
+  setupCard.classList.add('hidden');
+  gameCard.classList.remove('hidden');
+  playersLine.textContent = state.players.join(' · ');
+  startPlayerChip.textContent = state.players[state.order[0]];
+  revealBtn.textContent = `Reveal ${state.players[0]}`;
+  endActions.classList.add('hidden');
+  orderCard.classList.add('hidden');
+}
+
+/* Reveal sequence (player-by-player numeric order) */
+revealBtn.addEventListener('click', ()=> {
+  const idx = state.revealIndex;
+  if(idx >= state.playerCount) return;
+  showRevealForPlayer(idx);
+});
+
+function showRevealForPlayer(idx){
+  const playerName = state.players[idx];
+  modalTitle.textContent = `${playerName} — Reveal`;
+  const isImpostor = (idx === state.impostorIndex);
+  modalRole.textContent = isImpostor ? 'IMPOSTOR' : 'CREW';
+  modalRole.style.color = isImpostor ? '#ff6b6b' : '#10b981';
+
+  if(isImpostor){
+    // Impostor should NOT see troop name
+    modalTroop.textContent = "You are the impostor. Pretend you know the troop.";
+    modalHint.textContent = "(Do NOT reveal this screen to others.)";
+  } else {
+    // Crew sees the troop name here only
+    modalTroop.textContent = `Troop: ${state.crewTroop}`;
+    modalHint.textContent = "(Read the troop and prepare clues.)";
+  }
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden','false');
+
+  // Prevent instant skipping to reduce accidental peeking
+  modalOk.disabled = true;
+  modalOk.style.opacity = '0.6';
+  setTimeout(()=>{ modalOk.disabled = false; modalOk.style.opacity = '1'; }, 1500);
+
+  function onOk(){
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden','true');
+    modalOk.removeEventListener('click', onOk);
+
+    state.revealIndex += 1;
+    if(state.revealIndex < state.playerCount){
+      revealBtn.textContent = `Reveal ${state.players[state.revealIndex]}`;
+      revealBtn.disabled = true;
+      setTimeout(()=> revealBtn.disabled = false, 300);
+    } else {
+      revealBtn.textContent = `All Revealed`;
+      revealBtn.disabled = true;
+      endActions.classList.remove('hidden');
+    }
+  }
+  modalOk.addEventListener('click', onOk);
+}
+
+/* Show final speaking order (order is independent of role) */
+showOrder.addEventListener('click', ()=> {
+  orderCard.classList.remove('hidden');
+  orderList.innerHTML = '';
+  state.order.forEach((playerIdx, pos)=>{
+    const d = document.createElement('div');
+    d.style.padding='6px 8px';
+    d.style.marginBottom='6px';
+    d.style.borderRadius='8px';
+    d.style.background='rgba(255,255,255,0.02)';
+    d.textContent = `${pos+1}. ${state.players[playerIdx]}`;
+    orderList.appendChild(d);
+  });
+});
+
+/* New game */
+restartBtn.addEventListener('click', ()=> {
+  resetState();
+  setupCard.classList.remove('hidden');
+  gameCard.classList.add('hidden');
+});
+
+/* Reset helper */
+function resetState(){
+  state = {playerCount:3, players:[], impostorIndex:null, crewTroop:null, order:[], revealIndex:0};
+  gameCard.classList.add('hidden');
+  setupCard.classList.remove('hidden');
+  orderCard.classList.add('hidden');
+  endActions.classList.add('hidden');
+  revealBtn.disabled = false;
+  revealBtn.textContent='Reveal Player 1';
+}
+
+/* initial reset */
+resetState();
+</script>
+</body>
+</html>
